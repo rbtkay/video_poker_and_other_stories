@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Video Poker</title>
+        <link
+            rel="stylesheet"
+            href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+            integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z"
+            crossorigin="anonymous"
+        />
+    </head>
+    <body style="background-image: url('/static/green_rug.jpeg')">
+        <div class="container">
+            <div class="row">
+                <div class="col-sm-7">
+                    <table class="table" style="color: white">
+                        <tbody>
+                            {%for c in p_combinations%}
+                            <tr id="{{c.get('name').replace(' ', '_')}}">
+                                <th scope="row">{{c.get("name")}}</th>
+                                <td>{{c.get("req")}}</td>
+                                <td>{{c.get("pts")}}</td>
+                            </tr>
+                            {%endfor%}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="col-sm-5">
+                    <div
+                        class="card"
+                        style="opacity: 0.7; margin: 150px 50px 100px 50px"
+                    >
+                        <div class="card-body">
+                            <label style="font-size: 200%"
+                                >Votre cagnotte:
+                            </label>
+                            <p style="display: inline-block; font-size: 200%" id="bankroll">
+                                {{bankroll}}
+                            </p>
+                            <br />
+                            <label style="font-size: 200%">Votre mise: </label>
+                            <p style="display: inline-block; font-size: 200%" id="bet">
+                                {{bet}}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <h3 style="text-align: center; color: yellow" id="result">{{statement}}</h3>
+            <div class="row" id="card_container">
+                {%for card in hand%}
+                <div class="col-sm">
+                    <img
+                        id="{{card}}"
+                        style="margin-top: 50px"
+                        class="card-img-top"
+                        src="{{url_for('static', filename=card + '.svg')}}"
+                        onclick="selectCard(this)"
+                    />
+                </div>
+                {%endfor%}
+            </div>
+            <br />
+            <button class="btn btn-success" id="cardSelection" style="display: block;" onclick="confirmCardSelection()">
+                Deuxieme tirage
+            </button>
+            <div id="endGame" style="display: none;">
+                <a class="btn btn-light" href="{{url_for('game')}}">
+                    Rejouer
+                </a>
+                <a class="btn btn-light" href="{{url_for('index')}}">
+                    Quitter le Casino
+                </a>
+            </div>
+        </div>
+
+        <script type="text/javascript">
+            var selected_card = [];
+            var winning_combo = null;
+
+
+            function flashResult() {
+                console.log("winning combo", winning_combo)
+                var carre = document.querySelector(`#${winning_combo.replace(' ', '_')}`);
+                if (carre.style.color == "yellow") carre.style.color = "white";
+                else carre.style.color = "yellow";
+            }
+
+            function selectCard(e) {
+                console.log(e);
+                if (e.style.marginTop == "50px") {
+                    selected_card.push(e.id);
+                    e.style.marginTop = "0px";
+                } else {
+                    var index = selected_card.indexOf(e.id);
+                    if (index > -1) {
+                        selected_card.splice(index, 1);
+                    }
+                    e.style.marginTop = "50px";
+                }
+
+                console.log(selected_card);
+            }
+
+            function confirmCardSelection() {
+                fetch(`${window.origin}/play`, {
+                    method: "POST",
+                    credentials: "include",
+                    body: JSON.stringify(selected_card),
+                    cache: "no-cache",
+                    headers: new Headers({
+                        "content-type": "application/json",
+                    }),
+                })
+                    .then((res) => res.json())
+                    .then((res) => {
+                        var html = "";
+                        res[0].forEach((card) => {
+                            html += `<div class="col-sm"><img id="${card}" style="margin-top: 50px;" class="card-img-top" src="/static/${card}.svg" onclick="selectCard(this)"></div>`;
+                        });
+                        var card_container = document.querySelector(
+                            "#card_container"
+                        );
+                        var result_content = document.querySelector("#result");
+
+                        var result = "Pas de chance !";
+                        if (res[1]) {
+                            result = `${res[1]} !`;
+                            winning_combo = res[1];
+                            setInterval(flashResult, 250);
+                        }
+
+                        result_content.innerHTML = result;
+                        card_container.innerHTML = html;
+
+                        var end_game = document.querySelector("#endGame");
+                        var card_selection_btn = document.querySelector("#cardSelection");
+                        var bankroll = document.querySelector("#bankroll");
+
+                        end_game.style.display = "block";
+                        card_selection_btn.style.display = "none";
+                        bankroll.innerHTML = res[2];
+                    });
+            }
+        </script>
+
+        <script
+            src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+            integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+            crossorigin="anonymous"
+        ></script>
+        <script
+            src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+            integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+            crossorigin="anonymous"
+        ></script>
+        <script
+            src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+            integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+            crossorigin="anonymous"
+        ></script>
+    </body>
+</html>
